@@ -367,6 +367,15 @@ int get_free_block() {
   return block;
 }
 
+void free_block(int block) {
+  if (fat[block] != -1) {
+    free_block(fat[block]);
+  }
+  fat[block] = sb->free_block;
+  sb->free_block = block;
+  sb->n_free_blocks++;
+}
+
 //qsort compare
 int qsort_lscmp (const void *s1, const void *s2) {
   return strcmp((**(dir_entry**)s1).name, (**(dir_entry**)s2).name);
