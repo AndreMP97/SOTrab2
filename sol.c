@@ -5,7 +5,7 @@
 // compilação: gcc vfs.c -Wall -lreadline -lcurses -o vfs      //
 // utilização: vfs [-b[256|512|1024]] [-f[8|10|12]] FILESYSTEM //
 //                                                             //
-//                   Aceito nudes em troca                     //
+//                                                             //
 //                                                             //
 /////////////////////////////////////////////////////////////////
 
@@ -190,13 +190,13 @@ void init_filesystem(int block_size, int fat_type, char *filesystem_name) {
     }
     fat = (int *) ((unsigned long int) sb + block_size);
     blocks = (char *) ((unsigned long int) fat + FAT_SIZE(fat_type));
-    
+
     // inicia o superblock
     init_superblock(block_size, fat_type);
-    
+
     // inicia a FAT
     init_fat();
-    
+
     // inicia o bloco do directório raiz '/'
     init_dir_block(sb->root_block, sb->root_block);
   } else {
@@ -214,7 +214,7 @@ void init_filesystem(int block_size, int fat_type, char *filesystem_name) {
     fat = (int *) ((unsigned long int) sb + sb->block_size);
     blocks = (char *) ((unsigned long int) fat + FAT_SIZE(sb->fat_type));
 
-    // testa se o sistema de ficheiros é válido 
+    // testa se o sistema de ficheiros é válido
     if (sb->check_number != CHECK_NUMBER || filesystem_size != sb->block_size + FAT_SIZE(sb->fat_type) + FAT_ENTRIES(sb->fat_type) * sb->block_size) {
       printf("vfs: invalid filesystem (%s)\n", filesystem_name);
       printf("Usage: vfs [-b[256|512|1024]] [-f[8|10|12]] FILESYSTEM\n");
@@ -276,12 +276,12 @@ void init_dir_entry(dir_entry *dir, char type, char *name, int size, int first_b
   return;
 }
 
-int cstr_cmp(const void *a, const void *b) 
-{ 
+int cstr_cmp(const void *a, const void *b)
+{
   const char **ia = (const char **)a;
   const char **ib = (const char **)b;
   return strcmp(*ia, *ib);
-} 
+}
 
 int get_free_block() {
   if (sb->n_free_blocks == 0)
@@ -357,7 +357,7 @@ void vfs_ls(void) {
   char **content = (char **) malloc(n_entries * sizeof(char *));
   for (i = 0; i < n_entries; i++)
     content[i] = (char * ) malloc(1024 * sizeof(char *));
-  
+
 
   int cur_block = current_dir;
   for (i = 0; i < n_entries; i++)
@@ -376,7 +376,7 @@ void vfs_ls(void) {
       sprintf(type_str, "DIR");
     else
       sprintf(type_str, "%d", dir[block_i].size);
-    
+
     sprintf(content[i], "%s\t%02d-%02d-%04d\t%s", dir[block_i].name, dir[block_i].day, dir[block_i].month, 1900 + dir[block_i].year, type_str);
   }
 
@@ -421,7 +421,7 @@ void vfs_mkdir(char *nome_dir) {
   }
 
   dir = (dir_entry *) BLOCK(cur_block);
-  
+
   init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_DIR, nome_dir, 0, new_block);
 
   return;
@@ -445,7 +445,7 @@ void vfs_cd(char *nome_dir) {
     }
 
     int block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (dir[block_i].type == TYPE_DIR && strcmp(dir[block_i].name, nome_dir) == 0)
     {
       current_dir = dir[block_i].first_block;
@@ -527,7 +527,7 @@ void vfs_rmdir(char *nome_dir) {
     int block_i = i % DIR_ENTRIES_PER_BLOCK;
 
     if (dir[block_i].type == TYPE_DIR && strcmp(dir[block_i].name, nome_dir) == 0)
-    { 
+    {
       dir_entry *del_dir = (dir_entry *) BLOCK(dir[block_i].first_block);
 
       if (del_dir[0].size != 2)
@@ -578,7 +578,7 @@ void vfs_get(char *nome_orig, char *nome_dest) {
     printf("ERROR(get: input file not found)\n");
     return;
   }
-  
+
   int req_size = (int)statbuf.st_size;
   int req_blocks = (n_entries % DIR_ENTRIES_PER_BLOCK == 0) + (req_size + sb->block_size - 1) / sb->block_size;
 
@@ -626,7 +626,7 @@ void vfs_get(char *nome_orig, char *nome_dest) {
 
   dir = (dir_entry *) BLOCK(cur_block);
   init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_FILE, nome_dest, req_size, first_block);
-  
+
   return;
 }
 
@@ -648,7 +648,7 @@ void vfs_put(char *nome_orig, char *nome_dest) {
     }
 
     int block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (dir[block_i].type == TYPE_FILE && strcmp(dir[block_i].name, nome_orig) == 0)
     {
       int foutput = open(nome_dest, O_CREAT|O_TRUNC|O_WRONLY, 0644);
@@ -688,7 +688,7 @@ void vfs_cat(char *nome_fich) {
     }
 
     int block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (dir[block_i].type == TYPE_FILE && strcmp(dir[block_i].name, nome_fich) == 0)
     {
       int next_block = dir[block_i].first_block;
@@ -703,7 +703,7 @@ void vfs_cat(char *nome_fich) {
 	int write_size = sb->block_size;
 	if (fat[next_block] == -1)
 	  write_size = dir[block_i].size % sb->block_size;
-	
+
         write(1, BLOCK(next_block), write_size);
       }
 
@@ -736,7 +736,7 @@ void vfs_cp(char *nome_orig, char *nome_dest) {
     }
 
     block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (strcmp(dir[block_i].name, nome_orig) == 0)
     {
       inp_block = dir[block_i].first_block;
@@ -765,7 +765,7 @@ void vfs_cp(char *nome_orig, char *nome_dest) {
     }
 
     block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (strcmp(dir[block_i].name, nome_dest) == 0)
     {
       if (dir[block_i].type == TYPE_DIR)
@@ -828,7 +828,7 @@ void vfs_cp(char *nome_orig, char *nome_dest) {
   dir = (dir_entry *) BLOCK(cur_block);
   init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_FILE, nome_dest, req_size, first_block);
 
-  
+
   return;
 }
 
@@ -852,7 +852,7 @@ void vfs_mv(char *nome_orig, char *nome_dest) {
     }
 
     block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (strcmp(dir[block_i].name, nome_orig) == 0)
     {
       int last_block = cur_block;
@@ -876,7 +876,7 @@ void vfs_mv(char *nome_orig, char *nome_dest) {
 
       dir = (dir_entry *) BLOCK(current_dir);
       dir[0].size--;
-      
+
       inp_block = dir[block_i].first_block;
       break;
     }
@@ -901,7 +901,7 @@ void vfs_mv(char *nome_orig, char *nome_dest) {
     }
 
     block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (strcmp(dir[block_i].name, nome_dest) == 0)
     {
       if (dir[block_i].type == TYPE_DIR)
@@ -933,7 +933,7 @@ void vfs_mv(char *nome_orig, char *nome_dest) {
 
   dir = (dir_entry *) BLOCK(cur_block);
   init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_FILE, nome_dest, req_size, inp_block);
-    
+
   return;
 }
 
@@ -955,7 +955,7 @@ void vfs_rm(char *nome_fich) {
     }
 
     int block_i = i % DIR_ENTRIES_PER_BLOCK;
-        
+
     if (dir[block_i].type == TYPE_FILE && strcmp(dir[block_i].name, nome_fich) == 0)
     {
       int next_block = dir[block_i].first_block, count = 1;
@@ -995,6 +995,6 @@ void vfs_rm(char *nome_fich) {
   }
 
   printf("ERROR(rm: file not found)\n");
-  
+
   return;
 }
