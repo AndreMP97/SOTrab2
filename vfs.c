@@ -357,7 +357,17 @@ void exec_com(COMMAND com) {
   return;
 }
 
+int get_free_block() {
+  int block;
+  if ((block = sb->free_block) != -1) {
+    sb->free_block = fat[block];
+    fat[block] = -1;
+    sb->n_free_blocks--;
+  }
+  return block;
+}
 
+//qsort compare
 int qsort_lscmp (const void *s1, const void *s2) {
   return strcmp((**(dir_entry**)s1).name, (**(dir_entry**)s2).name);
 }
