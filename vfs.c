@@ -358,9 +358,35 @@ void exec_com(COMMAND com) {
 }
 
 
+int qsort_lscmp (const void *s1, const void *s2) {
+  return strcmp((**(dir_entry**)s1).name, (**(dir_entry**)s2).name);
+}
+
 // ls - lista o conte�do do diret�rio actual
 void vfs_ls(void) {
-  
+  dir_entry *dir, **qsort_dir;
+  char *mes[12] = {"Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"};
+  int i, n_entries, current_block;
+  dir = (dir_entry*) BLOCK(current_dir);
+  n_entries = dir[0].size;
+  qsort_dir = (dir_entry**) malloc(n_entries*sizeof(dir_entry*));
+  current_block = current_dir;
+  for (i = 0; i < n_entries; i++) {
+    if (i && i % DIR_ENTRIES_PER_BLOCK == 0) {
+      current_block = fat[current_block];
+      dir = (dir_entry*) BLOCK(current_block);
+    }
+    qsort_dir[i] = &dir[i%DIR_ENTRIES_PER_BLOCK];
+  }
+  qsort(qsort_dir, n_entries, sizeof(dir_entry*), qsort_lscmp);
+  for (i = 0; i < n_entries; i++) {
+    if(qsort_dir[i]->type == TYPE_DIR) {
+      printf("%s %d %s %d DIR\n", qsort_dir[i]->name, qsort_dir[i]->day, mes[qsort_dir[i]->month], qsort_dir[i]->year + 1900);
+    }
+    else {
+      printf("%d \n",qsort_dir[i]->size);
+    }
+  }
   return;
 }
 
