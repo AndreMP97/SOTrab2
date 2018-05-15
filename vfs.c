@@ -391,7 +391,7 @@ void vfs_ls(void) {
   qsort(qsort_dir, n_entries, sizeof(dir_entry*), qsort_lscmp);
   for (i = 0; i < n_entries; i++) {
     if(qsort_dir[i]->type == TYPE_DIR) {
-      printf("%s %d %s %d DIR\n", qsort_dir[i]->name, qsort_dir[i]->day, mes[qsort_dir[i]->month], qsort_dir[i]->year + 1900);
+      printf("%s %d-%s-%d DIR\n", qsort_dir[i]->name, qsort_dir[i]->day, mes[qsort_dir[i]->month], qsort_dir[i]->year + 1900);
     }
     else {
       printf("%d \n",qsort_dir[i]->size);
@@ -403,6 +403,27 @@ void vfs_ls(void) {
 
 // mkdir dir - cria um subdiret�rio com nome dir no diret�rio actual
 void vfs_mkdir(char *nome_dir) {
+  dir_entry *dir = (dir_entry*) BLOCK(current_dir);
+  int n_entries = dir[0].size;
+  int req_blocks = (n_entries % DIR_ENTRIES_PER_BLOCK == 0) + 1;
+  if (sb->n_free_blocks < req_blocks) {
+    printf("ERROR(mkdir: memory full)\n");
+    return;
+  }
+  dir[0].size++;
+  int new_block = get_free_block();
+  init_dir_block(new_block, current_dir);
+  int current_block = current_dir;
+  while (fat[current_block] != -1) {
+    current_block = fat[current_block];
+  }
+  if (n_entries % DIR_ENTRIES_PER_BLOCK == 0) {
+    int next_block = get_free_block();
+    fat[current_block] = next_block;
+    current_block = next_block;
+  }
+  dir = (dir_entry*) BLOCK(current_dir);
+  init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_DIR, nome_dir, 0, new_block);
   return;
 }
 
