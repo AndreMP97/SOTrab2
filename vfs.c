@@ -419,7 +419,7 @@ void vfs_mkdir(char *nome_dir) {
     printf("ERROR(mkdir: memory full)\n");
     return;
   }
-  dir[0].size++;
+  dir[0].size++; //numero de entradas do bloco incrementa
   int new_block = get_free_block();
   init_dir_block(new_block, current_dir);
   int current_block = current_dir;
@@ -431,7 +431,7 @@ void vfs_mkdir(char *nome_dir) {
     fat[current_block] = next_block;
     current_block = next_block;
   }
-  dir = (dir_entry*) BLOCK(current_dir);
+  dir = (dir_entry*) BLOCK(current_block);
   init_dir_entry(&dir[n_entries % DIR_ENTRIES_PER_BLOCK], TYPE_DIR, nome_dir, 0, new_block);
   return;
 }
@@ -439,6 +439,21 @@ void vfs_mkdir(char *nome_dir) {
 
 // cd dir - move o diret�rio actual para dir
 void vfs_cd(char *nome_dir) {
+  dir_entry *dir = (dir_entry*) BLOCK(current_dir);
+  int n_entries = dir[0].size, i;
+  int current_block = current_dir;
+  for (i=0; i < n_entries; i++) {
+    if (i % DIR_ENTRIES_PER_BLOCK == 0 && i) {
+        current_block = fat[current_block];
+        dir = (dir_entry*) BLOCK(current_block);
+      }
+    int block_i = i % DIR_ENTRIES_PER_BLOCK;
+    if (dir[block_i].type == TYPE_DIR && strcmp(dir[block_i].name, nome_dir) == 0) {
+      current_dir = dir[block_i].first_block;
+      return;
+    }
+  }
+  printf("ERROR(cd: directory not found)\n");
   return;
 }
 
