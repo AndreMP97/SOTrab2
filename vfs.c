@@ -381,6 +381,14 @@ int is_dir_empty(int block) {
   return (dir[0].size == 2);
 }
 
+int is_dir_full(int block) {
+  dir_entry *dir = (dir_entry*) BLOCK(block);
+  if (dir[0].size == DIR_ENTRIES_PER_BLOCK) {
+    return 1;
+  }
+  return 0;
+}
+
 dir_entry* find_dir_entry(int block, char *name) {
   dir_entry *dir = (dir_entry*) BLOCK(block);
   int i, n_entries = dir[0].size;
@@ -394,6 +402,21 @@ dir_entry* find_dir_entry(int block, char *name) {
     }
   }
   return NULL;
+}
+
+void add_dir_entry(int block, int size, char *name, int first_block, char type) {
+  dir_entry *dir = (dir_entry*) BLOCK(block);
+  int pos = dir[0].size % DIR_ENTRIES_PER_BLOCK;
+  dir[0].size++;
+  while (fat[block] != -1) {
+    block = fat[block];
+  }
+  if (pos == 0) {
+    fat[block] = get_free_block();
+    block = fat[block];
+  }
+  dir = (dir_entry*) BLOCK(block);
+  init_dir_entry(&dir[pos], type, name, size, first_block);
 }
 
 void remove_dir_entry(int block, dir_entry *rmdir) {
@@ -413,6 +436,15 @@ void remove_dir_entry(int block, dir_entry *rmdir) {
       free_block(block);
       fat[previous_block] = -1;
     }
+}
+
+void get_file (int id, int size, int block) {
+  read(id, BLOCK(block), sb->block_size);
+  while (size > sb->block_size) {
+    size -= sb->block_size;
+    block = fat[block];
+    read(id, BLOCK(block), sb->block_size);
+  }
 }
 
 void delete_block(int block) {
@@ -527,7 +559,7 @@ void vfs_rmdir(char *nome_dir) {
       return;
     }
     else if (!is_dir_empty(dir->first_block)) {
-      printf("ERROR(rmdir: directory not empyty)\n");
+      printf("ERROR(rmdir: directory not empty)\n");
       return;
     }
     else {
@@ -541,6 +573,36 @@ void vfs_rmdir(char *nome_dir) {
 
 // get fich1 fich2 - copia um ficheiro normal UNIX fich1 para um ficheiro no nosso sistema fich2 4º
 void vfs_get(char *nome_orig, char *nome_dest) {
+  int fd;
+  if ((fd = open(nome_orig,O_RDONLY)) == -1) {
+    printf("ERROR(get: file not found)\n");
+    return;
+  }
+  else {
+    struct stat fstat;
+    if(lstat(nome_orig,&fstat) == -1) {
+      //error
+      return;
+    }
+    else if(strlen(nome_orig) > MAX_NAME_LENGHT) {
+      //ERROR
+      return;
+    }
+    else if(find_dir_entry(current_dir, nome_dest) != NULL) {
+      //ERROR
+      return;
+    }
+    else if(sb->n_free_blocks < (sb->block_size-1 + fstat.st_size) / sb->block_size + is_dir_full(current_dir)) {
+      //error
+      return;
+    }
+    else {
+      int first_block = get_free_block();
+      get_file(fd, fstat.st_size, first_block);
+      add_dir_entry(current_dir, fstat.st_size, nome_dest, first_block, TYPE_FILE);
+    }
+    close(fd);
+  }
   return;
 }
 
