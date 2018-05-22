@@ -376,6 +376,52 @@ void free_block(int block) {
   sb->n_free_blocks++;
 }
 
+int is_dir_empty(int block) {
+  dir_entry *dir = (dir_entry*) BLOCK(block);
+  return (dir[0].size == 2);
+}
+
+dir_entry* find_dir_entry(int block, char *name) {
+  dir_entry *dir = (dir_entry*) BLOCK(block);
+  int i, n_entries = dir[0].size;
+  for(i=0; i < n_entries; i++) {
+    if (i > 0 && i % DIR_ENTRIES_PER_BLOCK == 0) {
+      block = fat[block];
+      dir = (dir_entry*) BLOCK(block);
+    }
+    if (strcmp(dir[i%DIR_ENTRIES_PER_BLOCK].name, name) == 0) {
+      return &dir[i%DIR_ENTRIES_PER_BLOCK];
+    }
+  }
+  return NULL;
+}
+
+void remove_dir_entry(int block, dir_entry *rmdir) {
+    dir_entry *dir, *last_entry;
+    int last_pos, previous_block;
+    dir = (dir_entry*) BLOCK(block);
+    last_pos = (dir[0].size - 1)%DIR_ENTRIES_PER_BLOCK;
+    dir[0].size--;
+    while (fat[block] != -1) {
+      previous_block = block;
+      block = fat[block];
+    }
+    dir = (dir_entry*) BLOCK(block);
+    last_entry = &dir[last_pos];
+    memcpy(rmdir,last_entry,sizeof(dir_entry));
+    if (last_pos == 0) {
+      free_block(block);
+      fat[previous_block] = -1;
+    }
+}
+
+void delete_block(int block) {
+  fat[block] = sb->free_block;
+  sb->free_block = block;
+  sb->n_free_blocks++;
+  return;
+}
+
 //qsort compare
 int qsort_lscmp (const void *s1, const void *s2) {
   return strcmp((**(dir_entry**)s1).name, (**(dir_entry**)s2).name);
@@ -400,7 +446,7 @@ void vfs_ls(void) {
   qsort(qsort_dir, n_entries, sizeof(dir_entry*), qsort_lscmp);
   for (i = 0; i < n_entries; i++) {
     if(qsort_dir[i]->type == TYPE_DIR) {
-      printf("%s %d-%s-%d DIR\n", qsort_dir[i]->name, qsort_dir[i]->day, mes[qsort_dir[i]->month], qsort_dir[i]->year + 1900);
+      printf("%s %d-%s-%d DIR\n", qsort_dir[i]->name, qsort_dir[i]->day, mes[(qsort_dir[i]->month)-1], qsort_dir[i]->year + 1900);
     }
     else {
       printf("%d \n",qsort_dir[i]->size);
@@ -464,19 +510,42 @@ void vfs_pwd(void) {
 }
 
 
-// rmdir dir - remove o subdiret�rio dir (se vazio) do diret�rio actual
+// rmdir dir - remove o subdiret�rio dir (se vazio) do diret�rio actual 1º
 void vfs_rmdir(char *nome_dir) {
+  if (strcmp(".", nome_dir) == 0 || strcmp("..", nome_dir) == 0) {
+    printf("ERROR(rmdir: can't remove this directory)\n");
+    return;
+  }
+  else {
+    dir_entry *dir = find_dir_entry(current_dir,nome_dir);
+    if (dir == NULL) {
+      printf("ERROR(rmdir: directory not found)\n");
+      return;
+    }
+    if (dir->type != TYPE_DIR) {
+      printf("ERROR(rmdir: not a directory)\n");
+      return;
+    }
+    else if (!is_dir_empty(dir->first_block)) {
+      printf("ERROR(rmdir: directory not empyty)\n");
+      return;
+    }
+    else {
+      free_block(dir->first_block);
+      remove_dir_entry(current_dir,dir);
+    }
+  }
   return;
 }
 
 
-// get fich1 fich2 - copia um ficheiro normal UNIX fich1 para um ficheiro no nosso sistema fich2
+// get fich1 fich2 - copia um ficheiro normal UNIX fich1 para um ficheiro no nosso sistema fich2 4º
 void vfs_get(char *nome_orig, char *nome_dest) {
   return;
 }
 
 
-// put fich1 fich2 - copia um ficheiro do nosso sistema fich1 para um ficheiro normal UNIX fich2
+// put fich1 fich2 - copia um ficheiro do nosso sistema fich1 para um ficheiro normal UNIX fich2 2º
 void vfs_put(char *nome_orig, char *nome_dest) {
   return;
 }
@@ -502,7 +571,7 @@ void vfs_mv(char *nome_orig, char *nome_dest) {
 }
 
 
-// rm fich - remove o ficheiro fich
+// rm fich - remove o ficheiro fich 3º
 void vfs_rm(char *nome_fich) {
   return;
 }
